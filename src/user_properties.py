@@ -6,7 +6,7 @@ from src.db_util import DBInstance
 
 
 class LambdaCoreHandler:
-    def __init__(self, event, context):
+    def __init__(self, event, context) -> None:
 
         if not event.get('headers', {}).get('authorization'):
             raise Exception('Header authorization with the hey_key is required')
