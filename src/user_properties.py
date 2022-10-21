@@ -1,5 +1,7 @@
 import json
 
+from typing import List, Tuple, Dict, Any
+
 from src.db_util import DBInstance
 
 
@@ -9,18 +11,18 @@ class LambdaCoreHandler:
         if not event.get('headers', {}).get('authorization'):
             raise Exception('Header authorization with the hey_key is required')
 
-        self.query = str(event.get('queryStringParameters', {}).get('query'))
+        self.query: str = str(event.get('queryStringParameters', {}).get('query'))
 
         self.conn = DBInstance(public_key=event.get('headers', {}).get("authorization"))
 
-    def result(self):
+    def result(self) -> List[Dict[str, Any]]:
         if self.query:
             return self.get_data()
         else:
             raise Exception('Parameter query cannot be empty')
 
-    def get_schema_properties(self):
-        schema_properties_query = """
+    def get_schema_properties(self) -> List[Tuple[Any]]:
+        schema_properties_query: str = """
             SELECT 
                 name, type, updated_at, created_at, priority, help_name, description
             FROM
@@ -28,8 +30,8 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=schema_properties_query)
 
-    def get_generic_properties(self, user_id):
-        generic_properties_query = f"""
+    def get_generic_properties(self, user_id: int) -> List[Tuple[Any]]:
+        generic_properties_query: str = f"""
             SELECT 
                 name, value, updated_at, created_at
             FROM
@@ -39,16 +41,16 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=generic_properties_query)
 
-    def get_user_properties(self, user_id):
-        generic_properties = self.get_generic_properties(user_id=user_id)
-        schema_properties = self.get_schema_properties()
+    def get_user_properties(self, user_id: int) -> List[Tuple[Any]]:
+        generic_properties: List[Tuple[Any]] = self.get_generic_properties(user_id=user_id)
+        schema_properties: List[Tuple[Any]] = self.get_schema_properties()
         return [
             sp for sp in schema_properties if sp[1] not in [gp[1] for gp in generic_properties]
         ]
 
     @staticmethod
-    def build_properties_body(properties):
-        dict_properties = []
+    def build_properties_body(properties: List[Tuple[Any]]) -> List[Dict[str, Any]]:
+        dict_properties: List = []
         for p in properties:
             dict_properties.append({
                 "name": p[0],
@@ -61,13 +63,13 @@ class LambdaCoreHandler:
             })
         return dict_properties
 
-    def get_data(self):
+    def get_data(self) -> List[Dict[str, Any]]:
         return self.build_properties_body(
             properties=self.get_user_properties(user_id=self.get_user_id())
         )
 
-    def get_user_id(self):
-        user_ids_query = f"""
+    def get_user_id(self) -> int:
+        user_ids_query: str = f"""
             SELECT 
                 uc.id
             FROM 
@@ -83,7 +85,7 @@ class LambdaCoreHandler:
             raise Exception("The user doesn't exists")
 
 
-def handler(event=None, context=None):
+def handler(event=None, context=None) -> Dict[str, Any]:
     try:
         response = LambdaCoreHandler(event, context)
         return {
