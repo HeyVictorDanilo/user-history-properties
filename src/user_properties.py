@@ -15,11 +15,11 @@ class LambdaCoreHandler:
 
     def result(self):
         if self.query:
-            return self.__get_data()
+            return self.get_data()
         else:
             raise Exception('Parameter query cannot be empty')
 
-    def __get_schema_properties(self):
+    def get_schema_properties(self):
         schema_properties_query = """
             SELECT 
                 name, type, updated_at, created_at, priority, help_name, description
@@ -28,7 +28,7 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=schema_properties_query)
 
-    def __get_generic_properties(self, user_id):
+    def get_generic_properties(self, user_id):
         generic_properties_query = f"""
             SELECT 
                 name, value, updated_at, created_at
@@ -39,15 +39,15 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=generic_properties_query)
 
-    def __get_user_properties(self, user_id):
-        generic_properties = self.__get_generic_properties(user_id=user_id)
-        schema_properties = self.__get_schema_properties()
+    def get_user_properties(self, user_id):
+        generic_properties = self.get_generic_properties(user_id=user_id)
+        schema_properties = self.get_schema_properties()
         return [
             sp for sp in schema_properties if sp[1] not in [gp[1] for gp in generic_properties]
         ]
 
     @staticmethod
-    def __build_properties_body(properties):
+    def build_properties_body(properties):
         dict_properties = []
         for p in properties:
             dict_properties.append({
@@ -61,12 +61,12 @@ class LambdaCoreHandler:
             })
         return dict_properties
 
-    def __get_data(self):
-        return self.__build_properties_body(
-            properties=self.__get_user_properties(user_id=self.__get_user_id())
+    def get_data(self):
+        return self.build_properties_body(
+            properties=self.get_user_properties(user_id=self.get_user_id())
         )
 
-    def __get_user_id(self):
+    def get_user_id(self):
         user_ids_query = f"""
             SELECT 
                 uc.id
@@ -76,7 +76,11 @@ class LambdaCoreHandler:
                 uc.email = '{self.query}' or uc.mobile_number = '{self.query}' or uc.identification = '{self.query}'
             ORDER by uc.updated_at desc limit 1;
         """
-        return self.conn.handler(query=user_ids_query)[0][0]
+        user_id = self.conn.handler(query=user_ids_query)
+        if user_id:
+            return user_id[0][0]
+        else:
+            raise Exception("The user doesn't exists")
 
 
 def handler(event=None, context=None):
@@ -105,5 +109,3 @@ def handler(event=None, context=None):
             })
         }
         return api_exception_obj
-
-
