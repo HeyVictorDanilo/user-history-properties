@@ -1,0 +1,40 @@
+service: user-properties
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.8
+  region: us-east-1
+
+useDotenv: true
+
+plugins:
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+
+package:
+  individually: true
+  exclude:
+    - 'node_modules/**'
+    - 'env/**'
+    - 'package.json'
+    - 'package-lock.json'
+    - 'requirements.txt'
+  include:
+    - '*.py'
+
+functions:
+  user-properties:
+    handler: src/user_properties.handler
+    memorySize: 8192
+    timeout: 900
+    events:
+      - httpApi:
+          path: /user-properties/{query}
+          method: get
+
+
