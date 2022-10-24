@@ -41,34 +41,13 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=generic_properties_query)
 
-    def get_property_columns(self, user_id: int) -> List[Tuple[Any]]:
-        user_columns_query: str = f"""
-            SELECT 
-                user_uuid, anonymous_id, email, first_name, last_name, mobile_number,
-                birth_date, city, country, department, gender, updated_at, created_at,
-                user_ref_id, identification, identification_type, migrated
-            FROM 
-                user_company as uc 
-            WHERE 
-                id = {user_id};
-        """
-        return self.conn.handler(query=user_columns_query)
-
     def get_user_properties(self, user_id: int) -> List[Tuple[Any]]:
         generic_properties: List[Tuple[Any]] = self.get_generic_properties(user_id=user_id)
         schema_properties: List[Tuple[Any]] = self.get_schema_properties()
-        user_columns: List[Tuple[Any]] = self.get_property_columns(user_id=user_id)
 
-        clean_schema_properties = [
+        return [
             sp for sp in schema_properties if sp[1] not in [gp[1] for gp in generic_properties]
         ]
-
-        for uc in user_columns:
-            if uc[1] not in [sp[1] for sp in schema_properties]:
-                if uc[2] != None:
-                    clean_schema_properties.append(uc)
-
-        return clean_schema_properties
 
     @staticmethod
     def build_properties_body(properties: List[Tuple[Any]]) -> List[Dict[str, Any]]:
