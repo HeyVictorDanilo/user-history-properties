@@ -1,6 +1,7 @@
 import json
 
 from typing import List, Tuple, Dict, Any
+from datetime import datetime, date
 
 from src.db_util import DBInstance
 
@@ -41,23 +42,81 @@ class LambdaCoreHandler:
         """
         return self.conn.handler(query=generic_properties_query)
 
+    def get_property_columns(self, user_id: int) -> List[Tuple[Any]]:
+        user_columns_query: str = f"""
+            SELECT 
+                user_uuid, anonymous_id, email, first_name, last_name, mobile_number,
+                birth_date, city, country, department, gender, updated_at, created_at,
+                user_ref_id, identification, identification_type, migrated
+            FROM 
+                user_company as uc 
+            WHERE 
+                id = {user_id};
+        """
+
+        name_property_columns = [
+            'user_uuid',
+            'anonymous_id',
+            'email',
+            'first_name',
+            'last_name',
+            'mobile_number',
+            'birth_date',
+            'city',
+            'country',
+            'department',
+            'gender',
+            'updated_at',
+            'created_at',
+            'user_ref_id',
+            'identification',
+            'identification_type',
+            'migrated'
+        ]
+
+        results = self.conn.handler(query=user_columns_query)[0]
+        property_columns = []
+        for i in range(0, len(name_property_columns)):
+            if results[i] is not None:
+                if isinstance(results[i], date) or isinstance(results[i], datetime):
+                    property_columns.append((name_property_columns[i], 'date', '', '', '', '', ''))
+                if isinstance(results[i], str):
+                    property_columns.append((name_property_columns[i], 'str', '', '', '', '', ''))
+                if isinstance(results[i], int):
+                    property_columns.append((name_property_columns[i], 'int', '', '', '', '', ''))
+                if isinstance(results[i], bool):
+                    property_columns.append((name_property_columns[i], 'bool', '', '', '', '', ''))
+        return property_columns
+
     def get_user_properties(self, user_id: int) -> List[Tuple[Any]]:
         generic_properties: List[Tuple[Any]] = self.get_generic_properties(user_id=user_id)
         schema_properties: List[Tuple[Any]] = self.get_schema_properties()
+        property_columns: List[Tuple[Any]] = self.get_property_columns(user_id=user_id)
 
-        return [
+        clean_schema_properties = [
             sp for sp in schema_properties if sp[1] not in [gp[1] for gp in generic_properties]
         ]
+
+        return clean_schema_properties
 
     @staticmethod
     def build_properties_body(properties: List[Tuple[Any]]) -> List[Dict[str, Any]]:
         dict_properties: List = []
         for p in properties:
+            if isinstance(p[2], datetime) or isinstance(p[2], date):
+                updated_at = p[2].strftime("%m/%d/%y, %H:%M:%S")
+            else:
+                updated_at = p[2]
+            if isinstance(p[3], datetime) or isinstance(p[3], date):
+                created_at = p[3].strftime("%m/%d/%y, %H:%M:%S")
+            else:
+                created_at = p[3]
+
             dict_properties.append({
                 "name": p[0],
                 "type": p[1],
-                "updated_at": p[2].strftime("%m/%d/%y, %H:%M:%S"),
-                "created_at": p[3].strftime("%m/%d/%y, %H:%M:%S"),
+                "updated_at": updated_at,
+                "created_at": created_at,
                 "priority": p[4],
                 "help_name": p[5],
                 "description": p[6]
@@ -65,8 +124,9 @@ class LambdaCoreHandler:
         return dict_properties
 
     def get_data(self) -> List[Dict[str, Any]]:
+        user_id = self.get_user_id()
         return self.build_properties_body(
-            properties=self.get_user_properties(user_id=self.get_user_id())
+            properties=self.get_user_properties(user_id=user_id)
         )
 
     def get_user_id(self) -> int:
