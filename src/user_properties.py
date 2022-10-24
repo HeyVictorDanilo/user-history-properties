@@ -97,6 +97,10 @@ class LambdaCoreHandler:
             sp for sp in schema_properties if sp[1] not in [gp[1] for gp in generic_properties]
         ]
 
+        clean_schema_properties.extend(
+            [pc for pc in property_columns if pc[1] not in [csp[1] for csp in clean_schema_properties]]
+        )
+
         return clean_schema_properties
 
     @staticmethod
